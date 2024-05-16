@@ -9,7 +9,7 @@ from redis_client import redis_client
 BASE_DIR = Path(__file__).resolve().parent.parent
 json_file_path = os.path.join(BASE_DIR / 'quiz-questions/questions_and_answers.json')
 
-#получаем случайцный вопрос из json файла
+#получаем случайный вопрос из json файла
 def get_question():
     with open(json_file_path, "r", encoding="utf-8") as json_file:
         qa_dict = json.load(json_file)
@@ -21,13 +21,27 @@ def get_question():
     return random_key, random_value
 
 # Получение ответа по ключу (вопросу)
-def get_correct_answer(question: str):
+def get_correct_answer(question: str, flag = True):
     with open(json_file_path, 'r', encoding="utf-8") as f:
         data = json.load(f)
-    answer = data[question]
-    return answer
+    answer = data[question].lower()
+    if flag:
+        if '(' in answer:
+            short_answer = answer.split(' (')[0]
+        elif '.' in answer:
+            short_answer = answer.split('.')[0]
+            if short_answer.endswith('.'): 
+                short_answer = short_answer[:-1]
+        else:
+            short_answer = answer
+        if short_answer.startswith('"') and short_answer.endswith('"'): 
+            short_answer = short_answer[1:-1]
+        print(short_answer)
+        return short_answer
+    else:
+        return answer
 
-#добавляяем вопрос в базу
+#добавляем вопрос в базу
 def add_question_to_user(user_id: int, question: str):
     redis_client.hset(f"user:{user_id}", "questions", question)
 

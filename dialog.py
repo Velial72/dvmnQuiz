@@ -8,13 +8,12 @@ from aiogram_dialog.widgets.text import Const, Format
 from aiogram_dialog.widgets.kbd import Button, Row
 from aiogram_dialog.widgets.input import TextInput, ManagedTextInput
 from aiogram_dialog.widgets.media import StaticMedia
-from get_question import get_question, get_correct_answer, question_exists
 from time import sleep
 
-from redis_client import redis_client
+from help_functions.redis_client import redis_client
+from help_functions.get_question import get_question, get_correct_answer, question_exists
 
-
-BASE_DIR = Path(__file__).resolve().parent.parent
+BASE_DIR = Path(__file__).resolve().parent
 
 class QuizSG(StatesGroup):
   start = State()
@@ -33,7 +32,7 @@ async def get_name(event_from_user: User, **kwargs):
 #получаем новый вопрос из файла
 async def get_new_question(dialog_manager: DialogManager, event_from_user: User, **kwargs):
     while True:
-        question, user_answer= get_question()
+        question = get_question()
         if not question_exists(user_id=event_from_user.id, question=question):
             redis_client.hset(f"user:{event_from_user.id}", "questions", question)
             return {'question': question}
@@ -47,7 +46,7 @@ async def get_score(dialog_manager: DialogManager, event_from_user: User, **kwar
 async def get_answer(dialog_manager: DialogManager, event_from_user: User, **kwargs):
     last_question_list = redis_client.hmget(f"user:{event_from_user.id}", "questions")
     last_question = last_question_list[0]
-    correct_answer = get_correct_answer(question=last_question)
+    correct_answer = get_correct_answer(question=last_question, flag=False)
     redis_client.hincrby(f"user:{event_from_user.id}", "give_up", 1)
     return {'correct_answer': correct_answer}
 
@@ -70,7 +69,7 @@ async def correct_user_answer(
         text: str) -> None:
     last_question_list = redis_client.hmget(f"user:{message.chat.id}", "questions")
     last_question = last_question_list[0]
-    if message.text == get_correct_answer(question=last_question):
+    if message.text == get_correct_answer(question=last_question, flag=True):
         await message.answer(text=f'Это правильный ответ!')
         redis_client.hincrby(f"user:{message.chat.id}", "score", 1)
         sleep(1)
