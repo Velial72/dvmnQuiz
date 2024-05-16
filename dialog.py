@@ -10,24 +10,26 @@ from aiogram_dialog.widgets.input import TextInput, ManagedTextInput
 from aiogram_dialog.widgets.media import StaticMedia
 from time import sleep
 
-from help_functions.redis_client import redis_client
-from help_functions.get_question import get_question, get_correct_answer, question_exists
+from redis_client import redis_client
+from get_question import get_question, get_correct_answer, question_exists
 
 BASE_DIR = Path(__file__).resolve().parent
 
+
 class QuizSG(StatesGroup):
-  start = State()
-  question = State()
-  mistake = State()
-  give_up = State()
-  score = State()
-  score_back = State()
+    start = State()
+    question = State()
+    mistake = State()
+    give_up = State()
+    score = State()
+    score_back = State()
 
 
 #геттеры
 #получаем имя пользователя
 async def get_name(event_from_user: User, **kwargs):
-  return {'name': event_from_user.username or 'Путник', "extended": True}
+    return {'name': event_from_user.username or 'Путник', "extended": True}
+
 
 #получаем новый вопрос из файла
 async def get_new_question(dialog_manager: DialogManager, event_from_user: User, **kwargs):
@@ -37,10 +39,12 @@ async def get_new_question(dialog_manager: DialogManager, event_from_user: User,
             redis_client.hset(f"user:{event_from_user.id}", "questions", question)
             return {'question': question}
 
+
 #получаем результат пользователя из базы
 async def get_score(dialog_manager: DialogManager, event_from_user: User, **kwargs):
     score, user_give_up = redis_client.hmget(f"user:{event_from_user.id}", "score", "give_up")
     return {'good_answer': score, 'user_give_up': user_give_up}
+
 
 #получаем правильный ответ
 async def get_answer(dialog_manager: DialogManager, event_from_user: User, **kwargs):
@@ -50,22 +54,25 @@ async def get_answer(dialog_manager: DialogManager, event_from_user: User, **kwa
     redis_client.hincrby(f"user:{event_from_user.id}", "give_up", 1)
     return {'correct_answer': correct_answer}
 
+
 #получаем старый вопрос из базы
 async def repeat_question(dialog_manager: DialogManager, event_from_user: User, **kwargs):
     last_question_list = redis_client.hmget(f"user:{event_from_user.id}", "questions")
     last_question = last_question_list[0]
     return {'re_question': last_question}
 
+
 #хендлеры
 #переходим в окно нового вопроса
 async def send_question(callback: CallbackQuery, button: Button, dialog_manager: DialogManager):
     await dialog_manager.switch_to(state=QuizSG.question)
 
+
 #проверяем введенный ответ с правильным из файла
 async def correct_user_answer(
-        message: Message, 
-        widget: ManagedTextInput, 
-        dialog_manager: DialogManager, 
+        message: Message,
+        widget: ManagedTextInput,
+        dialog_manager: DialogManager,
         text: str) -> None:
     last_question_list = redis_client.hmget(f"user:{message.chat.id}", "questions")
     last_question = last_question_list[0]
@@ -78,21 +85,26 @@ async def correct_user_answer(
         await message.answer(text=f'Ты ошибся! Попробуй снова')
         await dialog_manager.switch_to(state=QuizSG.mistake)
 
+
 #переходим в счет пользователя
 async def go_to_score(callback: CallbackQuery, button: Button, dialog_manager: DialogManager):
     await dialog_manager.switch_to(state=QuizSG.score)
+
 
 #переходим в счет пользователя
 async def go_to_score_back(callback: CallbackQuery, button: Button, dialog_manager: DialogManager):
     await dialog_manager.switch_to(state=QuizSG.score_back)
 
+
 #возвращаемся в окно ошибки
 async def back_to_question(callback: CallbackQuery, button: Button, dialog_manager: DialogManager):
     await dialog_manager.switch_to(QuizSG.mistake)
 
+
 #возвращаемся к вопросу
 async def back_button(callback: CallbackQuery, button: Button, dialog_manager: DialogManager):
     await dialog_manager.back()
+
 
 #переходим в окно "сдаться"
 async def give_up(callback: CallbackQuery, button: Button, dialog_manager: DialogManager):
@@ -107,7 +119,7 @@ start_dialog = Dialog(
                 text=Const('Новый вопрос'),
                 id='new_question',
                 on_click=send_question,
-                ),
+            ),
             Button(
                 text=Const('Сдаться'),
                 id='kill',
@@ -115,11 +127,11 @@ start_dialog = Dialog(
                 when=F["extended"],
             ),
         ),
-            Button(
-                text=Const('Мой счет'),
-                id='score',
-                on_click=go_to_score,
-            ),
+        Button(
+            text=Const('Мой счет'),
+            id='score',
+            on_click=go_to_score,
+        ),
         getter=get_name,
         state=QuizSG.start,
 
@@ -127,8 +139,8 @@ start_dialog = Dialog(
     Window(
         Format('Вопрос: {question}'),
         TextInput(
-           id='user_answer',
-           on_success=correct_user_answer,
+            id='user_answer',
+            on_success=correct_user_answer,
         ),
         Row(
             Button(
@@ -148,8 +160,8 @@ start_dialog = Dialog(
     Window(
         Format('Вопрос: {re_question}'),
         TextInput(
-           id='user_answer',
-           on_success=correct_user_answer,
+            id='user_answer',
+            on_success=correct_user_answer,
         ),
         Row(
             Button(
@@ -177,7 +189,7 @@ start_dialog = Dialog(
                 text=Const('Новый вопрос'),
                 id='new_question',
                 on_click=send_question,
-                ),
+            ),
             Button(
                 text=Const('Мой счет'),
                 id='score',

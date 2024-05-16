@@ -15,7 +15,7 @@ def main():
     env = Env()
     env.read_env()
 
-    BASE_DIR = Path(__file__).resolve().parent.parent
+    BASE_DIR = Path(__file__).resolve().parent
 
     folder_path = env.str('QUESTION_PATH', default=os.path.join(BASE_DIR / 'quiz-questions'))
     files = os.listdir(folder_path)
@@ -36,7 +36,6 @@ def main():
                     question = clean_text(question)
                     answer = clean_text(answer)
                     qa_dict[question.strip()] = answer.strip()
-
 
     with open(json_file_path, "w", encoding="utf-8") as json_file:
         json.dump(qa_dict, json_file, ensure_ascii=False, indent=4)
