@@ -86,7 +86,7 @@ def main():
                             keyboard=keyboard_all.get_keyboard(),
                         )
 
-                    if message_text == "новый вопрос":
+                    elif message_text == "новый вопрос":
                         vk_api.messages.send(
                             user_id=user_id,
                             random_id=get_random_id(),
