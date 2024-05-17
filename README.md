@@ -41,10 +41,10 @@
 ### Пример работы ботов
 - Telegram:
   
-![tg_bot](https://github.com/Velial72/dvmnQuiz/blob/main/tg-bot.gif)
+![tg_bot](https://github.com/Velial72/dvmnQuiz/blob/main/tg_bot.gif)
 - VK:
   
-![vk_bot](https://github.com/Velial72/Quiz/blob/main/vk_bot.gif)
+![vk_bot](https://github.com/Velial72/dvmnQuiz/blob/main/vk_bot.gif)
 
 ### Цель проекта
 
