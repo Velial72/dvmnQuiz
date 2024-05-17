@@ -5,6 +5,9 @@ from aiogram.filters import Command
 from aiogram.types import Message, FSInputFile
 from aiogram_dialog import DialogManager, StartMode, setup_dialogs
 from environs import Env
+from time import sleep
+import requests.exceptions
+import logging
 
 from dialog import QuizSG, start_dialog
 from redis_client import redis_client
@@ -16,6 +19,7 @@ async def create_user(user_id: int):
 
 
 BASE_DIR = Path(__file__).resolve().parent
+logger = logging.getLogger('Logger')
 
 
 def main():
@@ -23,9 +27,12 @@ def main():
     env.read_env()
 
     bot_token = env('BOT_TOKEN')
-
     bot = Bot(token=bot_token)
     dp = Dispatcher()
+
+    logger.setLevel(logging.WARNING)
+    logger.warning("TG_bot запущен")
+    
 
     @dp.message(Command(commands=["start"]))
     async def process_start_command(message: Message, dialog_manager: DialogManager):
@@ -42,11 +49,16 @@ def main():
             'Отвечай на вопросы! Чем больше ответов, тем выше шанс победить!\n\nТы всегда можешь сдаться и повторить '
             'через годик.'
         )
-
-    dp.include_router(start_dialog)
-    setup_dialogs(dp)
-    dp.run_polling(bot)
-
+    while True:
+        try:
+            dp.include_router(start_dialog)
+            setup_dialogs(dp)
+            dp.run_polling(bot)
+        except requests.exceptions.ReadTimeout:
+            pass
+        except requests.exceptions.ConnectionError:
+            logging.exception("TG_bot упал с ошибкой")
+            sleep(120)
 
 if __name__ == '__main__':
     main()
