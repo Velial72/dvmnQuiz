@@ -13,12 +13,7 @@ from dialog import QuizSG, start_dialog
 from redis_client import redis_client
 
 
-#создание пользователя с начальными данными
-async def create_user(user_id: int):
-    redis_client.hset(f"user:{user_id}", mapping={"questions": "", "score": 0, "give_up": 0})
-
-
-BASE_DIR = Path(__file__).resolve().parent
+base_dir = Path(__file__).resolve().parent
 logger = logging.getLogger('Logger')
 
 
@@ -37,8 +32,8 @@ def main():
     @dp.message(Command(commands=["start"]))
     async def process_start_command(message: Message, dialog_manager: DialogManager):
         await message.answer('Привет!\nЯ проведу викторину')
-        await create_user(user_id=message.chat.id)
-        file_path = os.path.join(BASE_DIR / "media", 'test.jpg')
+        redis_client.hset(f"user:{message.chat.id}", mapping={"questions": "", "score": 0, "give_up": 0})
+        file_path = os.path.join(base_dir / "media", 'test.jpg')
         photo = FSInputFile(path=file_path, filename='test.jpg')
         await bot.send_photo(chat_id=message.chat.id, photo=photo)
         await dialog_manager.start(state=QuizSG.start, mode=StartMode.RESET_STACK)
