@@ -1,39 +1,35 @@
+import os
 import vk_api as vk
 from vk_api.longpoll import VkLongPoll, VkEventType
 from vk_api.keyboard import VkKeyboard, VkKeyboardColor
 from vk_api.utils import get_random_id
 from environs import Env
 from time import sleep
+from pathlib import Path
 import requests.exceptions
 import logging
 
 from redis_client import redis_client
 from get_question import get_question, get_correct_answer, question_exists
 
-
+base_dir = Path(__file__).resolve().parent
 logger = logging.getLogger('Logger')
 
 
-#добавляем пользователя в базу
-def create_user(user_id: int):
-    redis_client.hset(f"user:{user_id}", mapping={"questions": "", "score": 0, "give_up": 0})
-    print('ok')
-
-
 #получаем новый вопрос
-def get_new_question(user_id: int):
-    while True:
-        question = get_question()
-        if not question_exists(user_id=user_id, question=question):
-            redis_client.hset(f'user:{user_id}', 'questions', question)
-            return question
-
+def get_new_question(user_id: int, json_file_path):
+    question = get_question(json_file_path=json_file_path)
+    if not question_exists(user_id=user_id, question=question):
+        redis_client.hset(f'user:{user_id}', 'questions', question)
+        return question
+    question = get_question(json_file_path=json_file_path)
+    return question
 
 #получаем ответ
-def get_answer(user_id: int, flag=True):
+def get_answer(user_id: int, json_file_path, flag=True):
     last_question_list = redis_client.hmget(f"user:{user_id}", "questions")
     last_question = last_question_list[0]
-    return get_correct_answer(question=last_question, flag=flag)
+    return get_correct_answer(question=last_question, json_file_path=json_file_path, flag=flag)
 
 
 #получаем результат
@@ -46,6 +42,7 @@ def main():
     env = Env()
     env.read_env()
 
+    json_file_path = env.str('JSON_PATH', default=os.path.join(base_dir / 'quiz-questions/questions_and_answers.json'))
     logger.setLevel(logging.WARNING)
     logger.warning("VK_bot запущен")
     vk_token = env('VK_TOKEN')
@@ -77,7 +74,7 @@ def main():
                     keyboard_score.add_button('Новый вопрос', color=VkKeyboardColor.POSITIVE)
 
                     if not redis_client.hexists(f"user:{user_id}", "questions"):
-                        create_user(user_id=user_id)
+                        redis_client.hset(f"user:{user_id}", mapping={"questions": "", "score": 0, "give_up": 0})
                         vk_api.messages.send(
                             user_id=user_id,
                             random_id=get_random_id(),
@@ -86,11 +83,11 @@ def main():
                             keyboard=keyboard_all.get_keyboard(),
                         )
 
-                    elif message_text == "новый вопрос":
+                    if message_text == "новый вопрос":
                         vk_api.messages.send(
                             user_id=user_id,
                             random_id=get_random_id(),
-                            message=f'{get_new_question(user_id=user_id)}',
+                            message=f'{get_new_question(user_id=user_id, json_file_path=json_file_path)}',
                             keyboard=keyboard_all.get_keyboard(),
                         )
 
@@ -99,7 +96,7 @@ def main():
                         vk_api.messages.send(
                             user_id=user_id,
                             random_id=get_random_id(),
-                            message=f'Вот тебе правильный ответ: {get_answer(user_id=user_id, flag=False)}\nЧтобы продолжить '
+                            message=f'Вот тебе правильный ответ: {get_answer(user_id=user_id, json_file_path=json_file_path, flag=False)}\nЧтобы продолжить '
                                     f'нажми "новый вопрос"',
                             keyboard=keyboard_give_up.get_keyboard(),
                         )
@@ -113,7 +110,7 @@ def main():
                             keyboard=keyboard_score.get_keyboard(),
                         )
 
-                    elif message_text == get_answer(user_id=user_id, flag=True):
+                    elif message_text == get_answer(user_id=user_id, json_file_path=json_file_path, flag=True):
                         redis_client.hincrby(f"user:{user_id}", "score", 1)
                         vk_api.messages.send(
                             user_id=user_id,
