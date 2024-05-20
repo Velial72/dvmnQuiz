@@ -1,10 +1,9 @@
-import os
 import json
 import random
-from pathlib import Path
-from environs import Env
 
-from redis_client import redis_client
+from settings import SetEnv
+
+setting = SetEnv()
 
 
 #получаем случайный вопрос из json файла
@@ -40,5 +39,5 @@ def get_correct_answer(question: str, json_file_path, flag=True):
 
 #проверяем был ли вопрос
 def question_exists(user_id: int, question: str) -> bool:
-    existing_question = redis_client.hget(f"user:{user_id}", "questions")
+    existing_question = setting.redis_client.hget(f"user:{user_id}", "questions")
     return existing_question == question

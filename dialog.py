@@ -8,17 +8,14 @@ from aiogram_dialog.widgets.text import Const, Format
 from aiogram_dialog.widgets.kbd import Button, Row
 from aiogram_dialog.widgets.input import TextInput, ManagedTextInput
 from aiogram_dialog.widgets.media import StaticMedia
-from environs import Env
 from time import sleep
 
-from redis_client import redis_client
+from settings import SetEnv
 from get_question import get_question, get_correct_answer, question_exists
 
 
-env = Env()
-env.read_env()
 base_dir = Path(__file__).resolve().parent
-json_file_path = env.str('JSON_PATH', default=os.path.join(base_dir / 'quiz-questions/questions_and_answers.json'))
+setting = SetEnv()
 
 class QuizSG(StatesGroup):
     start = State()
@@ -37,31 +34,31 @@ async def get_name(event_from_user: User, **kwargs):
 
 #получаем новый вопрос из файла
 async def get_new_question(dialog_manager: DialogManager, event_from_user: User, **kwargs):
-    question = get_question(json_file_path=json_file_path)
+    question = get_question(json_file_path=setting.json_file_path)
     if not question_exists(user_id=event_from_user.id, question=question):
-        redis_client.hset(f"user:{event_from_user.id}", "questions", question)
+        setting.redis_client.hset(f"user:{event_from_user.id}", "questions", question)
         return {'question': question}
-    question = get_question(json_file_path=json_file_path)
+    question = get_question(json_file_path=setting.json_file_path)
     return {'question': question}
 
 #получаем результат пользователя из базы
 async def get_score(dialog_manager: DialogManager, event_from_user: User, **kwargs):
-    score, user_give_up = redis_client.hmget(f"user:{event_from_user.id}", "score", "give_up")
+    score, user_give_up = setting.redis_client.hmget(f"user:{event_from_user.id}", "score", "give_up")
     return {'good_answer': score, 'user_give_up': user_give_up}
 
 
 #получаем правильный ответ
 async def get_answer(dialog_manager: DialogManager, event_from_user: User, **kwargs):
-    last_question_list = redis_client.hmget(f"user:{event_from_user.id}", "questions")
+    last_question_list = setting.redis_client.hmget(f"user:{event_from_user.id}", "questions")
     last_question = last_question_list[0]
-    correct_answer = get_correct_answer(question=last_question, json_file_path= json_file_path, flag=False)
-    redis_client.hincrby(f"user:{event_from_user.id}", "give_up", 1)
+    correct_answer = get_correct_answer(question=last_question, json_file_path=setting.json_file_path, flag=False)
+    setting.redis_client.hincrby(f"user:{event_from_user.id}", "give_up", 1)
     return {'correct_answer': correct_answer}
 
 
 #получаем старый вопрос из базы
 async def repeat_question(dialog_manager: DialogManager, event_from_user: User, **kwargs):
-    last_question_list = redis_client.hmget(f"user:{event_from_user.id}", "questions")
+    last_question_list = setting.redis_client.hmget(f"user:{event_from_user.id}", "questions")
     last_question = last_question_list[0]
     return {'re_question': last_question}
 
@@ -78,11 +75,11 @@ async def correct_user_answer(
         widget: ManagedTextInput,
         dialog_manager: DialogManager,
         text: str) -> None:
-    last_question_list = redis_client.hmget(f"user:{message.chat.id}", "questions")
+    last_question_list = setting.redis_client.hmget(f"user:{message.chat.id}", "questions")
     last_question = last_question_list[0]
-    if message.text == get_correct_answer(question=last_question, json_file_path=json_file_path, flag=True):
+    if message.text == get_correct_answer(question=last_question, json_file_path=setting.json_file_path, flag=True):
         await message.answer(text=f'Это правильный ответ!')
-        redis_client.hincrby(f"user:{message.chat.id}", "score", 1)
+        setting.redis_client.hincrby(f"user:{message.chat.id}", "score", 1)
         sleep(1)
         await dialog_manager.switch_to(state=QuizSG.question)
     else:

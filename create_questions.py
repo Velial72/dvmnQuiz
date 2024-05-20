@@ -1,8 +1,7 @@
 import os
-from pathlib import Path
 import re
 import json
-from environs import Env
+from settings import SetEnv
 
 
 def clean_text(text):
@@ -12,14 +11,11 @@ def clean_text(text):
 
 
 def main():
-    env = Env()
-    env.read_env()
+    setting = SetEnv()
 
-    BASE_DIR = Path(__file__).resolve().parent
-
-    folder_path = env.str('QUESTION_PATH', default=os.path.join(BASE_DIR / 'quiz-questions'))
+    folder_path = setting.folder_path
     files = os.listdir(folder_path)
-    json_file_path = env.str('JSON_PATH', default=os.path.join(BASE_DIR / 'quiz-questions/questions_and_answers.json'))
+    json_file_path = setting.json_file_path
 
     qa_dict = {}
 
